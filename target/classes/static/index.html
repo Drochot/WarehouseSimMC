@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>SimulationView</title>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="app.js"></script>
+
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+      integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+      integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+      integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+      integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+
+  <body style="margin:0px;padding:0px;overflow:hidden;">
+    <div
+      class="container"
+      style="position: absolute; background-color:rgba(255, 255, 255, 0.5);"
+    >
+      <div class="row">
+        <div class="col-sm">
+          Click screen to change camera angle
+        </div>
+      </div>
+    </div>
+    <!--
+        Deze pagina is de standaardpagina van de client. Hierin wordt de 3D wereld opgezet en wordt geluisterd
+        naar updates vanaf de server over de websocket communicatie.
+    -->
+    <script type="module">
+      import { OBJLoader2 } from "https://threejsfundamentals.org/threejs/resources/threejs/r108/examples/jsm/loaders/OBJLoader2.js";
+      import { MTLLoader } from "https://threejsfundamentals.org/threejs/resources/threejs/r108/examples/jsm/loaders/MTLLoader.js";
+      import { MtlObjBridge } from "https://threejsfundamentals.org/threejs/resources/threejs/r108/examples/jsm/loaders/obj2/bridge/MtlObjBridge.js";
+      import { GUI } from "https://threejsfundamentals.org/threejs/../3rdparty/dat.gui.module.js";
+
+      function parseCommand(input = "") {
+        return JSON.parse(input);
+      }
+
+      var socket;
+
+      window.onload = function() {
+        var camera, scene, renderer;
+        var cameraControls;
+
+        var worldObjects = {};
+
+        //camera wordt ingeladen
+        function createCamera() {
+          camera = new THREE.PerspectiveCamera(
+            70,
+            window.innerWidth / window.innerHeight,
+            1,
+            1000
+          );
+
+          var switchCam = true;
+
+          window.addEventListener("click", function(evt) {
+            if (switchCam) {
+              camera.fov=95;
+              camera.position.set(0,10,-18);
+              camera.updateProjectionMatrix();
+            } else {
+              camera.fov=80;
+              camera.position.set(0, 10, 19);
+              camera.updateProjectionMatrix();
+            }
+            switchCam = !switchCam;
+          });
+
+          cameraControls = new THREE.OrbitControls(camera);
+          cameraControls.target.set(0, 0, 0);
+          cameraControls.enabled = false;
+          camera.position.set(0, 10, 19);
+          camera.fov=80
+          cameraControls.update();
+          camera.updateProjectionMatrix();
+        }
+
+        // renderer
+        function init() {
+          scene = new THREE.Scene();
+
+          renderer = new THREE.WebGLRenderer({ antialias: true });
+          renderer.setPixelRatio(window.devicePixelRatio);
+          renderer.shadowMap.enabled = true;
+          renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+          renderer.shadowMap.autoUpdate = true;
+
+          renderer.setSize(window.innerWidth, window.innerHeight + 5);
+          document.body.appendChild(renderer.domElement);
+
+          window.addEventListener("resize", onWindowResize, false);
+        }
+
+        // zonlicht en schaduw wordt ingeladen
+        function loadSun() {
+          const suncolor = 0xffffff;
+          const sunintensity = 1;
+          const sun = new THREE.DirectionalLight(suncolor, sunintensity);
+
+          sun.position.set(0, 20, -30);
+          sun.target.position.set(0, 0, 0);
+
+          sun.castShadow = true;
+          sun.shadow.camera.near = 10;
+          sun.shadow.camera.far = 200;
+          sun.shadow.camera.top = 20;
+          sun.shadow.camera.bottom = -20;
+          sun.shadow.camera.left = -20;
+          sun.shadow.camera.right = 20;
+
+          scene.add(sun);
+          scene.add(sun.target);
+        }
+
+        // wereld wordt ingeladen
+        function loadWorld() {
+          const mtlLoader = new MTLLoader();
+          mtlLoader.load("models/world.mtl", mtlParseResult => {
+            const materials = MtlObjBridge.addMaterialsFromMtlLoader(
+              mtlParseResult
+            );
+            const objLoader = new OBJLoader2();
+            objLoader.addMaterials(materials);
+            objLoader.load("models/world.obj", world => {
+              //alle objects in world receiven/casten shadow
+              world.traverse(function(child) {
+                child.receiveShadow = true;
+                child.castShadow = true;
+              });
+              // behalve glass en dirt ofc
+              world.getObjectByName("Glass").castShadow = false;
+              // refraction index van glas is ongeveer 1.52, google het
+              world.children[4].material.refractionRatio = 1.52;
+              scene.add(world);
+            });
+          });
+        }
+
+        //ambientlight wordt ingeladen
+        function loadAmbientLight() {
+          const ambientcolor = 0xffffff;
+          const ambientintensity = 0.3;
+          const ambientLight = new THREE.AmbientLight(
+            ambientcolor,
+            ambientintensity
+          );
+          scene.add(ambientLight);
+        }
+
+        //skybox wordt ingeladen
+        function loadSkybox() {
+          const skyboxLoader = new THREE.CubeTextureLoader();
+          const skybox = skyboxLoader.load([
+            "skybox/pos-x.jpg",
+            "skybox/neg-x.jpg",
+            "skybox/pos-y.jpg",
+            "skybox/neg-y.jpg",
+            "skybox/pos-z.jpg",
+            "skybox/neg-z.jpg"
+          ]);
+          scene.background = skybox;
+        }
+
+        //camera wordt aangepast als de window van grootte verandert
+        function onWindowResize() {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+          requestAnimationFrame(animate);
+          cameraControls.update();
+          renderer.render(scene, camera);
+        }
+
+        /*
+         * Hier wordt de socketcommunicatie geregeld. Er wordt een nieuwe websocket aangemaakt voor het webadres dat we in
+         * de server geconfigureerd hebben als connectiepunt (/connectToSimulation). Op de socket wordt een .onmessage
+         * functie geregistreerd waarmee binnenkomende berichten worden afgehandeld.
+         */
+        socket = new WebSocket(
+          "ws://" +
+            window.location.hostname +
+            ":" +
+            window.location.port +
+            "/connectToSimulation"
+        );
+
+        //models van objecten die in World.java worden aangemaakt worden ingeladen
+        function loadModels() {
+          socket.onmessage = function(event) {
+            //Hier wordt het commando dat vanuit de server wordt gegeven uit elkaar gehaald
+            var command = parseCommand(event.data);
+
+            //Wanneer het commando is "object_update", dan wordt deze code uitgevoerd. Bekijk ook de servercode om dit goed te begrijpen.
+            if (command.command == "object_update") {
+              //Wanneer het object dat moet worden geupdate nog niet bestaat (komt niet voor in de lijst met worldObjects op de client),
+              //dan wordt het 3D model eerst aangemaakt in de 3D wereld.
+              if (
+                Object.keys(worldObjects).indexOf(command.parameters.uuid) < 0
+              ) {
+                var group = new THREE.Group();
+                //Wanneer het object een robot is, wordt de code hieronder uitgevoerd.
+                if (command.parameters.type == "robot") {
+                  const mtlLoader = new MTLLoader();
+                  mtlLoader.load("models/minecart.mtl", mtlParseResult => {
+                    const materials = MtlObjBridge.addMaterialsFromMtlLoader(
+                      mtlParseResult
+                    );
+                    const objLoader = new OBJLoader2();
+                    objLoader.addMaterials(materials);
+                    objLoader.load("models/minecart.obj", cart => {
+                      cart.scale.set(0.07, 0.07, 0.07);
+                      cart.position.x = 0;
+                      cart.position.z = 0;
+                      cart.position.y = -0.25;
+
+                      cart.traverse(function(child) {
+                        if (child.isMesh) {
+                          child.castShadow = true;
+                          child.receiveShadow = true;
+                        }
+                      });
+                      group.add(cart);
+                    });
+                  });
+
+                  scene.add(group);
+
+                  worldObjects[command.parameters.uuid] = group;
+                }
+
+                // console.log(scene);
+                (function() {
+                  var f = function() {
+                    $("#1x").text(
+                      (
+                        Math.round(scene.getObjectById(13).position.x * 2) / 2
+                      ).toFixed(1)
+                    );
+                    $("#1y").text(
+                      (
+                        Math.round(scene.getObjectById(13).position.y * 2) / 2
+                      ).toFixed(1)
+                    );
+                    $("#1z").text(
+                      (
+                        Math.round(scene.getObjectById(13).position.z * 2) / 2
+                      ).toFixed(1)
+                    );
+
+                    $("#2x").text(
+                      (
+                        Math.round(scene.getObjectById(14).position.x * 2) / 2
+                      ).toFixed(1)
+                    );
+                    $("#2y").text(
+                      (
+                        Math.round(scene.getObjectById(14).position.y * 2) / 2
+                      ).toFixed(1)
+                    );
+                    $("#2z").text(
+                      (
+                        Math.round(scene.getObjectById(14).position.z * 2) / 2
+                      ).toFixed(1)
+                    );
+                  };
+                  window.setInterval(f, 1000 / 30);
+                  f();
+                })();
+
+                if (command.parameters.type == "spotlight") {
+                  const color = 0xffffff;
+                  const intensity = 0.3;
+                  const light = new THREE.SpotLight(color, intensity);
+                  light.castShadow = true;
+                  light.angle = 180;
+                  light.target.updateMatrixWorld();
+                  scene.add(light);
+                  scene.add(light.target);
+                  worldObjects[command.parameters.uuid] = light;
+                }
+
+                if (command.parameters.type == "diamond") {
+                  var diamonds = new THREE.Object3D();
+                  const mtlLoader = new MTLLoader();
+                  mtlLoader.load("models/diamond.mtl", mtlParseResult => {
+                    const materials = MtlObjBridge.addMaterialsFromMtlLoader(
+                      mtlParseResult
+                    );
+                    const objLoader = new OBJLoader2();
+                    objLoader.addMaterials(materials);
+                    objLoader.load("models/diamond.obj", diamond => {
+                      diamond.scale.set(1, 1, 1);
+                      diamond.position.x -= 0.5;
+                      diamond.position.z -= 0.5;
+
+                      diamond.traverse(function(child) {
+                        if (child.isMesh) {
+                          child.castShadow = true;
+                          child.receiveShadow = true;
+                        }
+                      });
+                      diamonds.add(diamond);
+                    });
+                  });
+
+                  worldObjects[command.parameters.uuid] = diamonds;
+                  scene.add(diamonds);
+                }
+
+                if (command.parameters.type == "emerald") {
+                  var emeralds = new THREE.Group();
+                  const mtlLoader = new MTLLoader();
+                  mtlLoader.load("models/emerald.mtl", mtlParseResult => {
+                    const materials = MtlObjBridge.addMaterialsFromMtlLoader(
+                      mtlParseResult
+                    );
+                    const objLoader = new OBJLoader2();
+                    objLoader.addMaterials(materials);
+                    objLoader.load("models/emerald.obj", emerald => {
+                      emerald.scale.set(1, 1, 1);
+                      emerald.position.x -= 0.5;
+                      emerald.position.z -= 0.5;
+
+                      emeralds.add(emerald);
+                    });
+                  });
+
+                  scene.add(emeralds);
+                  worldObjects[command.parameters.uuid] = emeralds;
+                }
+
+                if (command.parameters.type == "gold") {
+                  var golds = new THREE.Group();
+                  const mtlLoader = new MTLLoader();
+                  mtlLoader.load("models/gold.mtl", mtlParseResult => {
+                    const materials = MtlObjBridge.addMaterialsFromMtlLoader(
+                      mtlParseResult
+                    );
+                    const objLoader = new OBJLoader2();
+                    objLoader.addMaterials(materials);
+                    objLoader.load("models/gold.obj", gold => {
+                      gold.scale.set(1, 1, 1);
+                      gold.position.x -= 0.5;
+                      gold.position.z -= 0.5;
+
+                      golds.add(gold);
+                    });
+                  });
+
+                  scene.add(golds);
+                  worldObjects[command.parameters.uuid] = golds;
+                }
+              }
+
+              /*
+               * Deze code wordt elke update uitgevoerd. Het update alle positiegegevens van het 3D object.
+               */
+              var object = worldObjects[command.parameters.uuid];
+
+              object.position.x = command.parameters.x;
+              object.position.y = command.parameters.y;
+              object.position.z = command.parameters.z;
+
+              object.rotation.x = command.parameters.rotationX;
+              object.rotation.y = command.parameters.rotationY;
+              object.rotation.z = command.parameters.rotationZ;
+
+              object.visible = command.parameters.visible;
+            }
+          };
+        }
+        init();
+        createCamera();
+        loadSun();
+        loadWorld();
+        loadAmbientLight();
+        loadSkybox();
+        loadModels();
+        animate();
+      };
+    </script>
+
+    <script src="three.min.js"></script>
+    <script src="OrbitControls.js"></script>
+  </body>
+</html>

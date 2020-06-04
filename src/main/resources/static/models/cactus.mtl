@@ -1,0 +1,123 @@
+Wavefront OBJ material file
+# Contains 9 materials
+
+newmtl Grass_Block
+# Ns 0
+# Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 0 0 0
+# map_Ka cactus-RGB.png
+# for G3D, to make textures look blocky:
+interpolateMode NEAREST_MAGNIFICATION_TRILINEAR_MIPMAP_MINIFICATION
+map_Kd cactus-RGB.png
+# illum 2
+# d 1
+# Tr 0
+
+newmtl Dirt
+# Ns 0
+# Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 0 0 0
+# map_Ka cactus-RGB.png
+# for G3D, to make textures look blocky:
+interpolateMode NEAREST_MAGNIFICATION_TRILINEAR_MIPMAP_MINIFICATION
+map_Kd cactus-RGB.png
+# illum 2
+# d 1
+# Tr 0
+
+newmtl Oak_Planks
+# Ns 0
+# Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 0 0 0
+# map_Ka cactus-RGB.png
+# for G3D, to make textures look blocky:
+interpolateMode NEAREST_MAGNIFICATION_TRILINEAR_MIPMAP_MINIFICATION
+map_Kd cactus-RGB.png
+# illum 2
+# d 1
+# Tr 0
+
+newmtl Oak_Log
+# Ns 0
+# Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 0 0 0
+# map_Ka cactus-RGB.png
+# for G3D, to make textures look blocky:
+interpolateMode NEAREST_MAGNIFICATION_TRILINEAR_MIPMAP_MINIFICATION
+map_Kd cactus-RGB.png
+# illum 2
+# d 1
+# Tr 0
+
+newmtl Glass
+# Ns 0
+# Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 0.03 0.03 0.03
+# map_Ka cactus-RGBA.png
+# for G3D, to make textures look blocky:
+interpolateMode NEAREST_MAGNIFICATION_TRILINEAR_MIPMAP_MINIFICATION
+map_Kd cactus-RGBA.png
+map_d cactus-Alpha.png
+# illum 2
+# d 1
+# Tr 0
+
+newmtl Rail
+# Ns 0
+# Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 0 0 0
+# map_Ka cactus-RGBA.png
+# for G3D, to make textures look blocky:
+interpolateMode NEAREST_MAGNIFICATION_TRILINEAR_MIPMAP_MINIFICATION
+map_Kd cactus-RGBA.png
+map_d cactus-Alpha.png
+# illum 2
+# d 1
+# Tr 0
+
+newmtl Fence
+# Ns 0
+# Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 0 0 0
+# map_Ka cactus-RGB.png
+# for G3D, to make textures look blocky:
+interpolateMode NEAREST_MAGNIFICATION_TRILINEAR_MIPMAP_MINIFICATION
+map_Kd cactus-RGB.png
+# illum 2
+# d 1
+# Tr 0
+
+newmtl Glowstone
+# Ns 0
+# Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 0 0 0
+Ke 1 1 1
+# map_Ka cactus-RGB.png
+# for G3D, to make textures look blocky:
+interpolateMode NEAREST_MAGNIFICATION_TRILINEAR_MIPMAP_MINIFICATION
+map_Kd cactus-RGB.png
+map_Ke cactus-RGB.png
+# illum 2
+# d 1
+# Tr 0
+
+newmtl Oak_Slab
+# Ns 0
+# Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 0 0 0
+# map_Ka cactus-RGB.png
+# for G3D, to make textures look blocky:
+interpolateMode NEAREST_MAGNIFICATION_TRILINEAR_MIPMAP_MINIFICATION
+map_Kd cactus-RGB.png
+# illum 2
+# d 1
+# Tr 0
